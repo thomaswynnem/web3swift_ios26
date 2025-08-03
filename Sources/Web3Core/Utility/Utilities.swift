@@ -236,23 +236,27 @@ public struct Utilities {
     }
 
     /// Recover the Ethereum address from recoverable secp256k1 signature.
-    /// Takes a hash of some message. What message is hashed should be checked by user separately.
     public static func hashECRecover(hash: Data, signature: Data) -> EthereumAddress? {
-        if signature.count != 65 { return nil }
-        let rData = signature[0..<32].bytes
-        let sData = signature[32..<64].bytes
+        guard signature.count == 65 else { return nil }
+        let rData: [UInt8] = Array(signature[0..<32])
+        let sData: [UInt8] = Array(signature[32..<64])
         var vData = signature[64]
-        if vData >= 27 && vData <= 30 {
+        if (27...30).contains(vData) {
             vData -= 27
-        } else if vData >= 31 && vData <= 34 {
+        } else if (31...34).contains(vData) {
             vData -= 31
-        } else if vData >= 35 && vData <= 38 {
+        } else if (35...38).contains(vData) {
             vData -= 35
         }
-        guard let signatureData = SECP256K1.marshalSignature(v: vData, r: rData, s: sData) else { return nil }
-        guard let publicKey = SECP256K1.recoverPublicKey(hash: hash, signature: signatureData) else { return nil }
+        guard let signatureData = SECP256K1.marshalSignature(v: vData, r: rData, s: sData) else {
+            return nil
+        }
+        guard let publicKey = SECP256K1.recoverPublicKey(hash: hash, signature: signatureData) else {
+            return nil
+        }
         return Utilities.publicToAddress(publicKey)
     }
+
 
     /// returns Ethereum variant of sha3 (keccak256) of data. Returns nil is data is empty
     static func keccak256(_ data: Data) -> Data? {
@@ -274,11 +278,16 @@ public struct Utilities {
 
     /// Unmarshals a 65 byte recoverable EC signature into internal structure.
     static func unmarshalSignature(signatureData: Data) -> SECP256K1.UnmarshaledSignature? {
-        if signatureData.count != 65 { return nil }
-        let bytes = signatureData.bytes
-        let r = Array(bytes[0..<32])
-        let s = Array(bytes[32..<64])
-        return SECP256K1.UnmarshaledSignature(v: bytes[64], r: Data(r), s: Data(s))
+        guard signatureData.count == 65 else { return nil }
+        let rSlice = signatureData[0..<32]       
+        let sSlice = signatureData[32..<64]
+        let v = signatureData[64]               
+    
+        return SECP256K1.UnmarshaledSignature(
+            v: v,
+            r: Data(rSlice),                     
+            s: Data(sSlice)
+        )
     }
 
     /// Marshals the V, R and S signature parameters into a 65 byte recoverable EC signature.
