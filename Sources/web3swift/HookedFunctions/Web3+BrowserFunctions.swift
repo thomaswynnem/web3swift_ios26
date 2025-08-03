@@ -52,22 +52,29 @@ extension Web3.BrowserFunctions {
     }
 
     public func personalECRecover(_ personalMessage: Data, signature: Data) -> String? {
-        if signature.count != 65 { return nil }
-        let rData = signature[0..<32].bytes
-        let sData = signature[32..<64].bytes
+        guard signature.count == 65 else { return nil }
+        let rData: [UInt8] = Array(signature[0..<32])
+        let sData: [UInt8] = Array(signature[32..<64])
         var vData = signature[64]
-        if vData >= 27 && vData <= 30 {
+        if (27...30).contains(vData) {
             vData -= 27
-        } else if vData >= 31 && vData <= 34 {
+        } else if (31...34).contains(vData) {
             vData -= 31
-        } else if vData >= 35 && vData <= 38 {
+        } else if (35...38).contains(vData) {
             vData -= 35
         }
-        guard let signatureData = SECP256K1.marshalSignature(v: vData, r: rData, s: sData) else { return nil }
-        guard let hash = Utilities.hashPersonalMessage(personalMessage) else { return nil }
-        guard let publicKey = SECP256K1.recoverPublicKey(hash: hash, signature: signatureData) else { return nil }
+        guard let signatureData = SECP256K1.marshalSignature(v: vData, r: rData, s: sData) else {
+            return nil
+        }
+        guard let hash = Utilities.hashPersonalMessage(personalMessage) else {
+            return nil
+        }
+        guard let publicKey = SECP256K1.recoverPublicKey(hash: hash, signature: signatureData) else {
+            return nil
+        }
         return Utilities.publicToAddressString(publicKey)
     }
+
 
 //    // FIXME: Rewrite this to CodableTransaction
 //    public func sendTransaction(_ transactionJSON: [String: Any], password: String ) async -> [String: Any]? {
